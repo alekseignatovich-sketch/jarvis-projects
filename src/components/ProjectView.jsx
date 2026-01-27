@@ -46,7 +46,7 @@ export default function ProjectView({ project, onProjectUpdate }) {
     if (!error) {
       loadFiles();
     } else {
-      console.error('Ошибка загрузки:', error);
+      console.error('Ошибка загрузки файла:', error);
       alert('Не удалось загрузить файл');
     }
   };
@@ -55,7 +55,7 @@ export default function ProjectView({ project, onProjectUpdate }) {
     if (!input.trim() || !project) return;
 
     const userMsg = { role: 'user', content: input, project_id: project.id };
-    setMessages(prev => [...prev, userMsg]);
+    setMessages((prev) => [...prev, userMsg]);
     setInput('');
     setIsSending(true);
 
@@ -63,53 +63,51 @@ export default function ProjectView({ project, onProjectUpdate }) {
     await supabase.from('messages').insert(userMsg);
 
     try {
-      // Используем Gemma — более стабильна на бесплатном тарифе
-      const model = "google/gemma-2b-it";
+      const model = "google/gemma-2b-it"; // Стабильная бесплатная модель
 
-      const response = await fetch(`https://api-inference.huggingface.co/models/${model}`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${import.meta.env.VITE_HF_TOKEN}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          inputs: `<start_of_turn>user\n${input}<end_of_turn>\n<start_of_turn>model`,
-          parameters: {
-            max_new_tokens: 300,
-            temperature: 0.7,
-            repetition_penalty: 1.2,
-          }
-        }),
-      });
+      const response = await fetch(
+        `https://api-inference.huggingface.co/models/${model}`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${import.meta.env.VITE_HF_TOKEN}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            inputs: `<start_of_turn>user\n${input}<end_of_turn>\n<start_of_turn>model`,
+            parameters: {
+              max_new_tokens: 300,
+              temperature: 0.7,
+              repetition_penalty: 1.2,
+            },
+          }),
+        }
+      );
 
-      let aiReply = "Не удалось получить ответ от ИИ.";
+      let aiReply = "ИИ не ответил. Попробуйте позже.";
 
       if (response.ok) {
         const data = await response.json();
         aiReply = data?.generated_text || data?.[0]?.generated_text || "";
-        // Очистка от системных токенов
         if (aiReply.includes("<end_of_turn>")) {
           aiReply = aiReply.split("<end_of_turn>")[0].trim();
         }
-        if (!aiReply) aiReply = "ИИ не вернул содержимого.";
+        if (!aiReply) aiReply = "ИИ вернул пустой ответ.";
       } else {
-        const errorText = await response.text();
-        aiReply = `Ошибка API: ${response.status} — попробуйте позже.`;
-        console.error("HF API Error:", errorText);
+        aiReply = `❌ Ошибка API (${response.status}). Попробуйте позже.`;
       }
 
       const aiMsg = { role: 'assistant', content: aiReply, project_id: project.id };
-      setMessages(prev => [...prev, aiMsg]);
+      setMessages((prev) => [...prev, aiMsg]);
       await supabase.from('messages').insert(aiMsg);
-
     } catch (err) {
       console.error("Ошибка подключения к ИИ:", err);
       const errorMsg = {
         role: 'assistant',
-        content: `❌ Не удалось подключиться к ИИ. Проверьте токен или попробуйте позже.`,
-        project_id: project.id
+        content: "❌ Не удалось подключиться к ИИ. Проверьте токен или интернет.",
+        project_id: project.id,
       };
-      setMessages(prev => [...prev, errorMsg]);
+      setMessages((prev) => [...prev, errorMsg]);
       await supabase.from('messages').insert(errorMsg);
     } finally {
       setIsSending(false);
@@ -118,7 +116,7 @@ export default function ProjectView({ project, onProjectUpdate }) {
 
   if (!project) {
     return (
-      <div className="flex-1 flex items-center justify-center text-gray-500">
+      <div className="flex-1 flex items-center justify-center text-gray-500 bg-gray-50">
         Выберите проект
       </div>
     );
@@ -154,11 +152,15 @@ export default function ProjectView({ project, onProjectUpdate }) {
               className="text-xs bg-white px-2 py-1 rounded border border-gray-200 cursor-pointer"
               title={f.name}
             >
-              📄 {f.name.length > 15 ? f.name.slice(0, 12) + '...' : f.name}
+              📄 {f.name.length > 15 ? f.name.slice(0, 12) + "..." : f.name}
             </span>
           ))}
         </div>
-        <input type="file" onChange={handleFileUpload} className="mt-2 text-sm text-gray-600" />
+        <input
+          type="file"
+          onChange={handleFileUpload}
+          className="mt-2 text-sm text-gray-600"
+        />
       </div>
 
       {/* Чат */}
@@ -167,9 +169,9 @@ export default function ProjectView({ project, onProjectUpdate }) {
           <div
             key={i}
             className={`p-3 rounded max-w-[80%] ${
-              m.role === 'user'
-                ? 'bg-blue-100 text-gray-800 ml-auto'
-                : 'bg-gray-200 text-gray-800 mr-auto'
+              m.role === "user"
+                ? "bg-blue-100 text-gray-800 ml-auto"
+                : "bg-gray-200 text-gray-800 mr-auto"
             }`}
           >
             {m.content}
@@ -188,7 +190,7 @@ export default function ProjectView({ project, onProjectUpdate }) {
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && !isSending && sendMessage()}
+            onKeyDown={(e) => e.key === "Enter" && !isSending && sendMessage()}
             placeholder="Спроси JARVIS..."
             disabled={isSending}
             className="flex-1 bg-white border border-gray-300 rounded px-3 py-2 outline-none text-gray-900"
@@ -196,13 +198,13 @@ export default function ProjectView({ project, onProjectUpdate }) {
           <button
             onClick={sendMessage}
             disabled={isSending || !input.trim()}
-            className={`px-4 rounded font-medium ${
+            className={`px-4 rounded font-medium transition ${
               isSending || !input.trim()
-                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                : 'bg-red-600 hover:bg-red-700 text-white'
+                ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                : "bg-red-600 hover:bg-red-700 text-white"
             }`}
           >
-            {isSending ? '⏳' : 'Отправить'}
+            {isSending ? "⏳" : "Отправить"}
           </button>
         </div>
       </div>
