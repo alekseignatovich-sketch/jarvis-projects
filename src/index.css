@@ -12,7 +12,7 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Кастомный скроллбар (Chrome, Edge, Safari) */
+/* Кастомный скроллбар — только в Chromium-браузерах */
 ::-webkit-scrollbar {
   width: 6px;
 }
@@ -27,7 +27,8 @@ body {
   background: #9ca3af;
 }
 
-/* Убираем выделение при двойном клике на кнопках */
-button:focus {
+/* Убираем фокус-обводку у кнопок (чистый UX) */
+button:focus,
+input:focus {
   outline: none;
 }
