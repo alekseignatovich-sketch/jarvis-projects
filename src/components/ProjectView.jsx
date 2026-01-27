@@ -75,13 +75,12 @@ export default function ProjectView({ project, onProjectUpdate }) {
       project_id: project.id,
     };
 
-    // Оптимистичный UI — показываем сообщение сразу
+    // Оптимистичный UI
     setMessages((prev) => [...prev, userMessage]);
     setInput('');
     setIsSending(true);
 
     try {
-      // Сохраняем user-сообщение в Supabase
       await supabase.from('messages').insert(userMessage);
 
       const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
@@ -89,16 +88,19 @@ export default function ProjectView({ project, onProjectUpdate }) {
         headers: {
           Authorization: `Bearer ${import.meta.env.VITE_OPENROUTER_KEY}`,
           "Content-Type": "application/json",
-          "HTTP-Referer": APP_URL,           // обязательно для OpenRouter
+          "HTTP-Referer": APP_URL,
           "X-Title": "JARVIS Projects",
         },
         body: JSON.stringify({
-          // ← рабочая модель на 2026 год (популярная кодер-версия Qwen)
-          model: "qwen/qwen2.5-coder-32b-instruct",
-          // Альтернативы (раскомментируй нужную):
-          // model: "qwen/qwen3-coder:free",               // бесплатная мощная MoE
-          // model: "qwen/qwen-plus",                       // баланс цена/качество
-          // model: "qwen/qwen-max",                        // топовая, но дороже
+          // Правильный ID модели на январь 2026 (Qwen2.5-Coder 32B Instruct)
+          model: "qwen/qwen-2.5-coder-32b-instruct",
+
+          // Альтернативы (раскомментируй, если хочешь попробовать новее/бесплатнее):
+          // model: "qwen/qwen3-coder:free",             // бесплатный MoE-вариант, очень сильный в коде
+          // model: "qwen/qwen-plus",                     // баланс, хорошее качество
+          // model: "qwen/qwen-max",                      // топовый, но дороже
+          // model: "qwen/qwen3-235b-a22b",               // флагман MoE 2025–2026
+
           messages: messages.map((m) => ({
             role: m.role,
             content: m.content,
@@ -131,7 +133,7 @@ export default function ProjectView({ project, onProjectUpdate }) {
 
       const errorMessage = {
         role: 'assistant',
-        content: `❌ Ошибка связи с JARVIS:\n${err.message || 'проверьте ключ / модель / интернет'}`,
+        content: `❌ Ошибка связи с JARVIS:\n${err.message || 'проверь ключ / модель / кредиты'}`,
         project_id: project.id,
       };
 
