@@ -22,11 +22,13 @@ export default function ProjectView({ project, onProjectUpdate }) {
   }, [project]);
 
   const loadFiles = async () => {
+    if (!project?.id) return;
     const { data } = await supabase.storage.from('project-files').list(project.id);
     setFiles(data || []);
   };
 
   const loadMessages = async () => {
+    if (!project?.id) return;
     const { data } = await supabase
       .from('messages')
       .select('*')
@@ -73,13 +75,13 @@ export default function ProjectView({ project, onProjectUpdate }) {
       project_id: project.id,
     };
 
-    // Оптимистично добавляем сообщение пользователя
+    // Оптимистичный UI — показываем сообщение сразу
     setMessages((prev) => [...prev, userMessage]);
     setInput('');
     setIsSending(true);
 
     try {
-      // Сохраняем сообщение пользователя в базу
+      // Сохраняем user-сообщение в Supabase
       await supabase.from('messages').insert(userMessage);
 
       const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
@@ -87,11 +89,16 @@ export default function ProjectView({ project, onProjectUpdate }) {
         headers: {
           Authorization: `Bearer ${import.meta.env.VITE_OPENROUTER_KEY}`,
           "Content-Type": "application/json",
-          "HTTP-Referer": APP_URL,           // критически важно для OpenRouter
+          "HTTP-Referer": APP_URL,           // обязательно для OpenRouter
           "X-Title": "JARVIS Projects",
         },
         body: JSON.stringify({
-          model: "qwen/qwen2.5-72b-instruct",  // ← рабочая модель 2025–2026
+          // ← рабочая модель на 2026 год (популярная кодер-версия Qwen)
+          model: "qwen/qwen2.5-coder-32b-instruct",
+          // Альтернативы (раскомментируй нужную):
+          // model: "qwen/qwen3-coder:free",               // бесплатная мощная MoE
+          // model: "qwen/qwen-plus",                       // баланс цена/качество
+          // model: "qwen/qwen-max",                        // топовая, но дороже
           messages: messages.map((m) => ({
             role: m.role,
             content: m.content,
@@ -104,7 +111,7 @@ export default function ProjectView({ project, onProjectUpdate }) {
       if (!response.ok) {
         const errData = await response.json().catch(() => ({}));
         throw new Error(
-          `OpenRouter ошибка ${response.status}: ${errData.error?.message || errData.detail || 'неизвестно'}`
+          `OpenRouter ошибка ${response.status}: ${errData.error?.message || errData.detail || 'неизвестная ошибка'}`
         );
       }
 
@@ -124,7 +131,7 @@ export default function ProjectView({ project, onProjectUpdate }) {
 
       const errorMessage = {
         role: 'assistant',
-        content: `❌ Не удалось получить ответ от JARVIS\n${err.message}`,
+        content: `❌ Ошибка связи с JARVIS:\n${err.message || 'проверьте ключ / модель / интернет'}`,
         project_id: project.id,
       };
 
