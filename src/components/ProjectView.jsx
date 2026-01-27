@@ -59,16 +59,18 @@ export default function ProjectView({ project, onProjectUpdate }) {
     setInput('');
     setIsSending(true);
 
+    // Сохраняем сообщение пользователя
     await supabase.from('messages').insert(userMsg);
 
     try {
-      // ✅ OpenRouter — поддержка Qwen, Llama, Claude
+      // ✅ OpenRouter — работает из любого места
       const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${import.meta.env.VITE_OPENROUTER_KEY}`,
           "Content-Type": "application/json",
-          "HTTP-Referer": "https://jarvis-projects.up.railway.app", // замени на свой URL
+          // ⚠️ ОБЯЗАТЕЛЬНО: точное совпадение с URL твоего сайта
+          "HTTP-Referer": "https://jarvis-projects-production33.up.railway.app",
           "X-Title": "JARVIS Projects"
         },
         body: JSON.stringify({
@@ -84,7 +86,7 @@ export default function ProjectView({ project, onProjectUpdate }) {
         aiReply = data?.choices?.[0]?.message?.content?.trim() || "Пустой ответ.";
       } else {
         const errorData = await response.json().catch(() => ({}));
-        aiReply = `Ошибка OpenRouter (${response.status}): ${errorData.detail || "Попробуйте позже."}`;
+        aiReply = `Ошибка (${response.status}): ${errorData.detail || "Неверный запрос."}`;
       }
 
       const aiMsg = { role: 'assistant', content: aiReply, project_id: project.id };
@@ -92,10 +94,10 @@ export default function ProjectView({ project, onProjectUpdate }) {
       await supabase.from('messages').insert(aiMsg);
 
     } catch (err) {
-      console.error("Ошибка OpenRouter:", err);
+      console.error("Ошибка сети:", err);
       const errorMsg = {
         role: 'assistant',
-        content: "❌ Не удалось подключиться к ИИ. Проверьте интернет.",
+        content: "❌ Ошибка подключения к ИИ. Проверьте интернет.",
         project_id: project.id,
       };
       setMessages((prev) => [...prev, errorMsg]);
