@@ -4,7 +4,7 @@ export default function ProjectList({ projects, activeProject, setActiveProject,
     <div className="w-64 bg-gray-50 p-4 flex flex-col border-r border-gray-200 h-screen">
       <button
         onClick={onCreate}
-        className="mb-4 bg-red-600 hover:bg-red-700 text-white py-2 px-3 rounded flex items-center gap-2 font-medium shadow-sm"
+        className="mb-4 bg-red-600 hover:bg-red-700 text-white py-2 px-3 rounded flex items-center gap-2 font-medium shadow-sm transition"
       >
         ➕ Новый проект
       </button>
@@ -16,8 +16,10 @@ export default function ProjectList({ projects, activeProject, setActiveProject,
             <div
               key={p.id}
               onClick={() => setActiveProject(p)}
-              className={`p-2 cursor-pointer rounded truncate ${
-                activeProject?.id === p.id ? 'bg-gray-200 font-medium' : 'hover:bg-gray-100'
+              className={`p-2 cursor-pointer rounded truncate transition ${
+                activeProject?.id === p.id
+                  ? 'bg-gray-200 font-medium text-gray-900'
+                  : 'hover:bg-gray-100 text-gray-700'
               }`}
             >
               {p.name}
