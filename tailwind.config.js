@@ -4,9 +4,12 @@ export default {
   theme: {
     extend: {
       colors: {
-        background: '#0f0f0f',
-        surface: '#1a1a1a',
-        primary: '#dc2626',
+        background: '#ffffff',
+        surface: '#f9fafb',
+        primary: '#dc2626', // красный остаётся (ты его любишь)
+        text: '#111827',
+        textSecondary: '#4b5563',
+        border: '#e5e7eb',
       }
     },
   },
