@@ -20,3 +20,6 @@ body {
   background: #d1d5db;
   border-radius: 3px;
 }
+body {
+  background-color: #ff00ff !important; /* Ярко-розовый */
+}
