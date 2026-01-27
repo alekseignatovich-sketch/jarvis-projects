@@ -59,34 +59,34 @@ export default function ProjectView({ project, onProjectUpdate }) {
     setInput('');
     setIsSending(true);
 
-    // Сохраняем сообщение пользователя
+    // Сохраняем сообщение пользователя в Supabase
     await supabase.from('messages').insert(userMsg);
 
     try {
-      // ✅ OpenRouter — работает из любого места
+      // ✅ Строго по OpenRouter OpenAPI Spec
       const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${import.meta.env.VITE_OPENROUTER_KEY}`,
           "Content-Type": "application/json",
-          // ⚠️ ОБЯЗАТЕЛЬНО: точное совпадение с URL твоего сайта
+          // ⚠️ Обязательно: точное совпадение с разрешённым Referer
           "HTTP-Referer": "https://jarvis-projects-production33.up.railway.app",
           "X-Title": "JARVIS Projects"
         },
         body: JSON.stringify({
-          model: "qwen/qwen-3-32b", // или "meta-llama/llama-3.1-70b-instruct"
-          messages: [{ role: "user", content: input }]
+          model: "qwen/qwen-3-32b",
+          messages: [{ role: "user", content: input }] // ← массив, как требует OpenAPI
         })
       });
 
-      let aiReply = "ИИ не ответил.";
+      let aiReply = "ИИ не вернул ответ.";
 
       if (response.ok) {
         const data = await response.json();
-        aiReply = data?.choices?.[0]?.message?.content?.trim() || "Пустой ответ.";
+        aiReply = data?.choices?.[0]?.message?.content?.trim() || "Пустой ответ от ИИ.";
       } else {
         const errorData = await response.json().catch(() => ({}));
-        aiReply = `Ошибка (${response.status}): ${errorData.detail || "Неверный запрос."}`;
+        aiReply = `Ошибка OpenRouter (${response.status}): ${errorData.detail || "Неверный запрос."}`;
       }
 
       const aiMsg = { role: 'assistant', content: aiReply, project_id: project.id };
@@ -94,10 +94,10 @@ export default function ProjectView({ project, onProjectUpdate }) {
       await supabase.from('messages').insert(aiMsg);
 
     } catch (err) {
-      console.error("Ошибка сети:", err);
+      console.error("Сетевая ошибка:", err);
       const errorMsg = {
         role: 'assistant',
-        content: "❌ Ошибка подключения к ИИ. Проверьте интернет.",
+        content: "❌ Не удалось подключиться к ИИ. Проверьте интернет.",
         project_id: project.id,
       };
       setMessages((prev) => [...prev, errorMsg]);
@@ -117,7 +117,7 @@ export default function ProjectView({ project, onProjectUpdate }) {
 
   return (
     <div className="flex-1 flex flex-col">
-      {/* Шапка */}
+      {/* Шапка проекта */}
       <div className="p-4 border-b border-gray-700 bg-gray-900">
         <input
           value={name}
@@ -135,7 +135,7 @@ export default function ProjectView({ project, onProjectUpdate }) {
         />
       </div>
 
-      {/* Файлы */}
+      {/* Блок файлов */}
       <div className="p-4 border-b border-gray-700 bg-gray-800">
         <label className="block text-sm text-gray-400 mb-1">Файлы</label>
         <div className="flex gap-2 flex-wrap">
@@ -156,7 +156,7 @@ export default function ProjectView({ project, onProjectUpdate }) {
         />
       </div>
 
-      {/* Чат */}
+      {/* Диалог с ИИ */}
       <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-gray-900">
         {messages.map((m, i) => (
           <div
@@ -177,7 +177,7 @@ export default function ProjectView({ project, onProjectUpdate }) {
         )}
       </div>
 
-      {/* Ввод */}
+      {/* Поле ввода */}
       <div className="p-4 border-t border-gray-700 bg-gray-900">
         <div className="flex gap-2">
           <input
