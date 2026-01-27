@@ -7,12 +7,10 @@ body {
   background-color: #ffffff;
   color: #111827;
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
-/* Кастомный скроллбар — только в Chromium-браузерах */
+/* Скроллбар */
 ::-webkit-scrollbar {
   width: 6px;
 }
@@ -22,13 +20,4 @@ body {
 ::-webkit-scrollbar-thumb {
   background: #d1d5db;
   border-radius: 3px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #9ca3af;
-}
-
-/* Убираем фокус-обводку у кнопок (чистый UX) */
-button:focus,
-input:focus {
-  outline: none;
 }
