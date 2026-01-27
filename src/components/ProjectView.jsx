@@ -1,5 +1,5 @@
 // src/components/ProjectView.jsx
-import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';ur
 import { supabase } from '../lib/supabaseClient';
 
 export default function ProjectView({ project, onProjectUpdate }) {
