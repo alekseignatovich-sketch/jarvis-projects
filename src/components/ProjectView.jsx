@@ -1,6 +1,7 @@
 // src/components/ProjectView.jsx
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
+import { useSpeechRecognition } from '../hooks/useSpeechRecognition';  // ← новый импорт
 
 const APP_URL = "https://jarvis-projects-production33.up.railway.app";
 
@@ -11,6 +12,21 @@ export default function ProjectView({ project, onProjectUpdate }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [isSending, setIsSending] = useState(false);
+
+  const {
+    transcript,
+    isListening,
+    startListening,
+    stopListening,
+  } = useSpeechRecognition({
+    lang: 'ru-RU',  // или 'en-US' / 'uk-UA' и т.д.
+    continuous: true,
+    interimResults: true,
+    onFinalTranscript: (final) => {
+      // Можно сразу добавлять в input или отправлять — здесь просто обновляем
+      setInput((prev) => (prev + ' ' + final).trim());
+    },
+  });
 
   useEffect(() => {
     if (!project) return;
@@ -75,7 +91,6 @@ export default function ProjectView({ project, onProjectUpdate }) {
       project_id: project.id,
     };
 
-    // Оптимистичный UI
     setMessages((prev) => [...prev, userMessage]);
     setInput('');
     setIsSending(true);
@@ -92,15 +107,7 @@ export default function ProjectView({ project, onProjectUpdate }) {
           "X-Title": "JARVIS Projects",
         },
         body: JSON.stringify({
-          // Правильный ID модели на январь 2026 (Qwen2.5-Coder 32B Instruct)
-          model: "qwen/qwen-2.5-coder-32b-instruct",
-
-          // Альтернативы (раскомментируй, если хочешь попробовать новее/бесплатнее):
-          // model: "qwen/qwen3-coder:free",             // бесплатный MoE-вариант, очень сильный в коде
-          // model: "qwen/qwen-plus",                     // баланс, хорошее качество
-          // model: "qwen/qwen-max",                      // топовый, но дороже
-          // model: "qwen/qwen3-235b-a22b",               // флагман MoE 2025–2026
-
+          model: "qwen/qwen3-coder:free",  // бесплатная, мощная, актуальная на 2026
           messages: messages.map((m) => ({
             role: m.role,
             content: m.content,
@@ -113,7 +120,7 @@ export default function ProjectView({ project, onProjectUpdate }) {
       if (!response.ok) {
         const errData = await response.json().catch(() => ({}));
         throw new Error(
-          `OpenRouter ошибка ${response.status}: ${errData.error?.message || errData.detail || 'неизвестная ошибка'}`
+          `OpenRouter ошибка ${response.status}: ${errData.error?.message || errData.detail || 'неизвестно'}`
         );
       }
 
@@ -133,7 +140,7 @@ export default function ProjectView({ project, onProjectUpdate }) {
 
       const errorMessage = {
         role: 'assistant',
-        content: `❌ Ошибка связи с JARVIS:\n${err.message || 'проверь ключ / модель / кредиты'}`,
+        content: `❌ Ошибка связи с JARVIS:\n${err.message || 'проверьте ключ / модель / интернет'}`,
         project_id: project.id,
       };
 
@@ -216,9 +223,9 @@ export default function ProjectView({ project, onProjectUpdate }) {
         )}
       </div>
 
-      {/* Поле ввода */}
+      {/* Поле ввода + микрофон */}
       <div className="p-4 border-t border-gray-700 bg-gray-900">
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center">
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -228,14 +235,29 @@ export default function ProjectView({ project, onProjectUpdate }) {
                 sendMessage();
               }
             }}
-            placeholder="Спроси JARVIS о проекте..."
+            placeholder="Спроси JARVIS о проекте... (или говори голосом)"
             disabled={isSending}
             className="flex-1 bg-gray-800 border border-gray-700 rounded px-4 py-2 outline-none text-white placeholder-gray-500 disabled:opacity-50"
           />
+
+          <button
+            type="button"
+            onClick={isListening ? stopListening : startListening}
+            className={`px-4 py-2 rounded transition min-w-[60px] ${
+              isListening
+                ? 'bg-red-600 hover:bg-red-700 text-white'
+                : 'bg-gray-700 hover:bg-gray-600 text-gray-200'
+            }`}
+            title={isListening ? 'Остановить запись' : 'Начать голосовой ввод'}
+            disabled={isSending}
+          >
+            {isListening ? '🛑' : '🎤'}
+          </button>
+
           <button
             onClick={sendMessage}
             disabled={isSending || !input.trim()}
-            className={`px-5 rounded font-medium transition min-w-[90px] ${
+            className={`px-5 py-2 rounded font-medium transition min-w-[90px] ${
               isSending || !input.trim()
                 ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
                 : 'bg-red-600 hover:bg-red-700 text-white'
@@ -244,6 +266,13 @@ export default function ProjectView({ project, onProjectUpdate }) {
             {isSending ? '⏳' : 'Отправить'}
           </button>
         </div>
+
+        {/* Показываем текущий распознанный текст (промежуточный) */}
+        {isListening && transcript && (
+          <div className="mt-2 text-sm text-gray-400">
+            Распознано: {transcript}
+          </div>
+        )}
       </div>
     </div>
   );
