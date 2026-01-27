@@ -1,5 +1,5 @@
 // src/components/ProjectView.jsx
-import { useState, useEffect } from 'react';ur
+import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
 
 export default function ProjectView({ project, onProjectUpdate }) {
@@ -59,23 +59,24 @@ export default function ProjectView({ project, onProjectUpdate }) {
     setInput('');
     setIsSending(true);
 
-    // Сохраняем сообщение пользователя в Supabase
+    // Сохраняем сообщение пользователя
     await supabase.from('messages').insert(userMsg);
 
     try {
-      // ✅ Строго по OpenRouter OpenAPI Spec
+      // ✅ ТОЧНЫЙ REFERER — без пробелов, как в адресной строке Railway
+      const HTTP_REFERER = "https://jarvis-projects-production35.up.railway.app";
+
       const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${import.meta.env.VITE_OPENROUTER_KEY}`,
           "Content-Type": "application/json",
-          // ⚠️ Обязательно: точное совпадение с разрешённым Referer
-          "HTTP-Referer": "https://jarvis-projects-production33.up.railway.app",
+          "HTTP-Referer": HTTP_REFERER, // ← критически важно: без пробелов!
           "X-Title": "JARVIS Projects"
         },
         body: JSON.stringify({
           model: "qwen/qwen-3-32b",
-          messages: [{ role: "user", content: input }] // ← массив, как требует OpenAPI
+          messages: [{ role: "user", content: input }]
         })
       });
 
@@ -117,7 +118,7 @@ export default function ProjectView({ project, onProjectUpdate }) {
 
   return (
     <div className="flex-1 flex flex-col">
-      {/* Шапка проекта */}
+      {/* Шапка */}
       <div className="p-4 border-b border-gray-700 bg-gray-900">
         <input
           value={name}
@@ -135,7 +136,7 @@ export default function ProjectView({ project, onProjectUpdate }) {
         />
       </div>
 
-      {/* Блок файлов */}
+      {/* Файлы */}
       <div className="p-4 border-b border-gray-700 bg-gray-800">
         <label className="block text-sm text-gray-400 mb-1">Файлы</label>
         <div className="flex gap-2 flex-wrap">
@@ -156,7 +157,7 @@ export default function ProjectView({ project, onProjectUpdate }) {
         />
       </div>
 
-      {/* Диалог с ИИ */}
+      {/* Чат */}
       <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-gray-900">
         {messages.map((m, i) => (
           <div
@@ -177,7 +178,7 @@ export default function ProjectView({ project, onProjectUpdate }) {
         )}
       </div>
 
-      {/* Поле ввода */}
+      {/* Ввод */}
       <div className="p-4 border-t border-gray-700 bg-gray-900">
         <div className="flex gap-2">
           <input
