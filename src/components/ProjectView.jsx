@@ -59,75 +59,50 @@ export default function ProjectView({ project, onProjectUpdate }) {
     setInput('');
     setIsSending(true);
 
-    // Сохраняем сообщение пользователя
     await supabase.from('messages').insert(userMsg);
 
-    const callAI = async (retryCount = 0) => {
-      try {
-        // ✅ ИСПОЛЬЗУЕМ QWEN — бесплатная и доступная модель
-        const modelUrl = "https://api-inference.huggingface.co/models/Qwen/Qwen1.5-4B-Chat";
+    try {
+      // ✅ OpenRouter — поддержка Qwen, Llama, Claude
+      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${import.meta.env.VITE_OPENROUTER_KEY}`,
+          "Content-Type": "application/json",
+          "HTTP-Referer": "https://jarvis-projects.up.railway.app", // замени на свой URL
+          "X-Title": "JARVIS Projects"
+        },
+        body: JSON.stringify({
+          model: "qwen/qwen-3-32b", // или "meta-llama/llama-3.1-70b-instruct"
+          messages: [{ role: "user", content: input }]
+        })
+      });
 
-        // ✅ Правильный формат промпта для Qwen
-        const prompt = `<|im_start|>user\n${input}<|im_end|>\n<|im_start|>assistant`;
+      let aiReply = "ИИ не ответил.";
 
-        const response = await fetch(modelUrl, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${import.meta.env.VITE_HF_TOKEN}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            inputs: prompt,
-            parameters: {
-              max_new_tokens: 300,
-              temperature: 0.7,
-              repetition_penalty: 1.1,
-            },
-          }),
-        });
-
+      if (response.ok) {
         const data = await response.json();
-
-        // Если модель "спит" — ждём и повторяем (до 3 раз)
-        if (data?.error?.includes("is currently loading") && retryCount < 3) {
-          const waitTime = data?.estimated_time || 5;
-          await new Promise(r => setTimeout(r, waitTime * 1000));
-          return callAI(retryCount + 1);
-        }
-
-        let aiReply = "ИИ не вернул ответ.";
-
-        if (response.ok) {
-          // Qwen возвращает массив или строку
-          aiReply = data?.[0]?.generated_text || data?.generated_text || "";
-          // Убираем системные токены из ответа
-          if (aiReply.includes("<|im_end|>")) {
-            aiReply = aiReply.split("<|im_end|>")[0].trim();
-          }
-          if (!aiReply) aiReply = "Пустой ответ от ИИ.";
-        } else {
-          aiReply = `Ошибка API (${response.status}). Попробуйте позже.`;
-        }
-
-        const aiMsg = { role: 'assistant', content: aiReply, project_id: project.id };
-        setMessages((prev) => [...prev, aiMsg]);
-        await supabase.from('messages').insert(aiMsg);
-
-      } catch (err) {
-        console.error("Ошибка подключения к ИИ:", err);
-        const errorMsg = {
-          role: 'assistant',
-          content: "❌ Не удалось подключиться к ИИ. Проверьте токен и интернет.",
-          project_id: project.id,
-        };
-        setMessages((prev) => [...prev, errorMsg]);
-        await supabase.from('messages').insert(errorMsg);
-      } finally {
-        setIsSending(false);
+        aiReply = data?.choices?.[0]?.message?.content?.trim() || "Пустой ответ.";
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        aiReply = `Ошибка OpenRouter (${response.status}): ${errorData.detail || "Попробуйте позже."}`;
       }
-    };
 
-    callAI();
+      const aiMsg = { role: 'assistant', content: aiReply, project_id: project.id };
+      setMessages((prev) => [...prev, aiMsg]);
+      await supabase.from('messages').insert(aiMsg);
+
+    } catch (err) {
+      console.error("Ошибка OpenRouter:", err);
+      const errorMsg = {
+        role: 'assistant',
+        content: "❌ Не удалось подключиться к ИИ. Проверьте интернет.",
+        project_id: project.id,
+      };
+      setMessages((prev) => [...prev, errorMsg]);
+      await supabase.from('messages').insert(errorMsg);
+    } finally {
+      setIsSending(false);
+    }
   };
 
   if (!project) {
