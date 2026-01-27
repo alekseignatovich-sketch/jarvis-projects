@@ -64,22 +64,24 @@ export default function ProjectView({ project, onProjectUpdate }) {
 
     const callAI = async (retryCount = 0) => {
       try {
-        // 🔥 ИСПРАВЛЕНО: убраны пробелы в URL
-        const modelUrl = "https://api-inference.huggingface.co/models/google/gemma-2b-it";
+        // ✅ ИСПОЛЬЗУЕМ QWEN — бесплатная и доступная модель
+        const modelUrl = "https://api-inference.huggingface.co/models/Qwen/Qwen1.5-4B-Chat";
+
+        // ✅ Правильный формат промпта для Qwen
+        const prompt = `<|im_start|>user\n${input}<|im_end|>\n<|im_start|>assistant`;
 
         const response = await fetch(modelUrl, {
           method: "POST",
           headers: {
-            // 🔒 Безопасно: используем переменную, а не хардкод
             Authorization: `Bearer ${import.meta.env.VITE_HF_TOKEN}`,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            inputs: `<start_of_turn>user\n${input}<end_of_turn>\n<start_of_turn>model`,
+            inputs: prompt,
             parameters: {
               max_new_tokens: 300,
               temperature: 0.7,
-              repetition_penalty: 1.2,
+              repetition_penalty: 1.1,
             },
           }),
         });
@@ -96,9 +98,11 @@ export default function ProjectView({ project, onProjectUpdate }) {
         let aiReply = "ИИ не вернул ответ.";
 
         if (response.ok) {
-          aiReply = data?.generated_text || data?.[0]?.generated_text || "";
-          if (aiReply.includes("<end_of_turn>")) {
-            aiReply = aiReply.split("<end_of_turn>")[0].trim();
+          // Qwen возвращает массив или строку
+          aiReply = data?.[0]?.generated_text || data?.generated_text || "";
+          // Убираем системные токены из ответа
+          if (aiReply.includes("<|im_end|>")) {
+            aiReply = aiReply.split("<|im_end|>")[0].trim();
           }
           if (!aiReply) aiReply = "Пустой ответ от ИИ.";
         } else {
