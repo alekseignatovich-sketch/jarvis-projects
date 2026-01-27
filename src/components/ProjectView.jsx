@@ -44,40 +44,80 @@ export default function ProjectView({ project, onProjectUpdate }) {
     if (!error) loadFiles();
   };
 
-  const sendMessage = async () => {
-    if (!input.trim()) return;
-    const userMsg = { role: 'user', content: input, project_id: project.id };
-    setMessages(prev => [...prev, userMsg]);
-    setInput('');
+ const sendMessage = async () => {
+  if (!input.trim() || !project) return;
 
-    // Сохраняем сообщение пользователя
-    await supabase.from('messages').insert(userMsg);
+  const userMsg = { role: 'user', content: input, project_id: project.id };
+  setMessages(prev => [...prev, userMsg]);
+  setInput('');
+  setIsSending(true);
 
-    // Вызываем ИИ через Hugging Face
+  // Сохраняем сообщение пользователя
+  await supabase.from('messages').insert(userMsg);
+
+  const callAI = async (retryCount = 0) => {
     try {
-      const res = await fetch('https://api-inference.huggingface.co/models/Qwen/Qwen1.5-7B-Chat', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${import.meta.env.VITE_HF_TOKEN}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          inputs: [{ role: 'user', content: input }],
-          parameters: { max_new_tokens: 512, temperature: 0.7 }
-        }),
-      });
-      const data = await res.json();
-      const aiReply = data?.[0]?.generated_text || "Не удалось получить ответ от ИИ.";
+      const model = "google/gemma-2b-it";
+      const response = await fetch(
+        `https://api-inference.huggingface.co/models/${model}`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${import.meta.env.VITE_HF_TOKEN}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            inputs: `<start_of_turn>user\n${input}<end_of_turn>\n<start_of_turn>model`,
+            parameters: {
+              max_new_tokens: 300,
+              temperature: 0.7,
+              repetition_penalty: 1.2,
+            },
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      // Если модель "спит" — ждём и повторяем
+      if (data?.error?.includes("is currently loading") && retryCount < 3) {
+        const waitTime = data?.estimated_time || 5;
+        await new Promise(r => setTimeout(r, waitTime * 1000));
+        return callAI(retryCount + 1);
+      }
+
+      let aiReply = "ИИ не вернул ответ.";
+
+      if (response.ok) {
+        aiReply = data?.generated_text || data?.[0]?.generated_text || "";
+        if (aiReply.includes("<end_of_turn>")) {
+          aiReply = aiReply.split("<end_of_turn>")[0].trim();
+        }
+        if (!aiReply) aiReply = "Пустой ответ от ИИ.";
+      } else {
+        aiReply = `Ошибка HF API (${response.status}). Попробуйте позже.`;
+      }
+
       const aiMsg = { role: 'assistant', content: aiReply, project_id: project.id };
       setMessages(prev => [...prev, aiMsg]);
       await supabase.from('messages').insert(aiMsg);
+
     } catch (err) {
-      console.error(err);
-      const errorMsg = { role: 'assistant', content: "Ошибка подключения к ИИ.", project_id: project.id };
+      console.error("Ошибка ИИ:", err);
+      const errorMsg = {
+        role: 'assistant',
+        content: "❌ Не удалось подключиться к ИИ. Проверьте интернет и токен.",
+        project_id: project.id
+      };
       setMessages(prev => [...prev, errorMsg]);
       await supabase.from('messages').insert(errorMsg);
+    } finally {
+      setIsSending(false);
     }
   };
+
+  callAI();
+};
 
   if (!project) {
     return (
